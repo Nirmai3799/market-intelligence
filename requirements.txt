@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+psycopg2-binary
+sqlalchemy
+asyncpg
+redis
+anthropic
+openai
+httpx
+python-jose[cryptography]
+passlib[bcrypt]
+bcrypt==4.0.1
+yfinance
+newsapi-python
+youtube-transcript-api
+yt-dlp
