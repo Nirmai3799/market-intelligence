@@ -14,12 +14,15 @@ def get_ticker_news(ticker: str, limit: int = 10) -> list:
     """Fetch latest news for a ticker — tries NewsAPI first, falls back to RSS."""
     articles = []
 
+    # Strip exchange suffix so "RELIANCE.NS" searches as "RELIANCE"
+    search_term = ticker.split(".")[0] if "." in ticker else ticker
+
     # Source 1: NewsAPI (requires valid key)
     if settings.NEWSAPI_KEY:
         try:
             client = NewsApiClient(api_key=settings.NEWSAPI_KEY)
             response = client.get_everything(
-                q=ticker,
+                q=search_term,
                 language="en",
                 sort_by="publishedAt",
                 page_size=limit,
@@ -62,7 +65,7 @@ def get_ticker_news(ticker: str, limit: int = 10) -> list:
                         "description": description,
                         "via": "rss",
                     }
-                    if _is_relevant(title, description, ticker):
+                    if _is_relevant(title, description, search_term):
                         relevant.append(entry)
                     else:
                         fallback.append(entry)

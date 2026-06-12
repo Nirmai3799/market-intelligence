@@ -47,6 +47,25 @@ def _finnhub_profile(ticker: str) -> dict | None:
         return None
 
 
+def resolve_ticker(ticker: str) -> str:
+    """
+    Auto-detect the correct exchange suffix.
+    If 'RELIANCE' has no price data, tries 'RELIANCE.NS' (NSE) then 'RELIANCE.BO' (BSE).
+    Returns the first working variant, or the original ticker if none found.
+    """
+    ticker = ticker.upper().strip()
+    if "." in ticker:
+        return ticker  # already explicit (AAPL, RELIANCE.NS, etc.)
+    for candidate in (ticker, ticker + ".NS", ticker + ".BO"):
+        try:
+            price = getattr(yf.Ticker(candidate).fast_info, "last_price", None)
+            if price and price > 0:
+                return candidate
+        except Exception:
+            continue
+    return ticker
+
+
 def get_ticker_data(ticker: str) -> dict:
     """
     Fetch live price and market data.
@@ -57,8 +76,9 @@ def get_ticker_data(ticker: str) -> dict:
                   (these don't need to be real-time)
 
     Falls back to yfinance-only if Finnhub is unavailable.
+    Automatically appends .NS / .BO for Indian stocks if needed.
     """
-    ticker = ticker.upper().strip()
+    ticker = resolve_ticker(ticker.upper().strip())
 
     try:
         # ── Real-time quote from Finnhub ──────────────────────────────────────

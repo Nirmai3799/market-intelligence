@@ -1,6 +1,6 @@
 import concurrent.futures
 
-from app.services.market_data import get_ticker_data
+from app.services.market_data import get_ticker_data, resolve_ticker
 from app.services.news_service import get_ticker_news
 from app.services.technical_analysis import get_technicals
 from app.services.market_context import get_market_context
@@ -12,7 +12,7 @@ def get_snapshot(ticker: str) -> dict:
     Fetches price, news, technical indicators, and market context in parallel
     so the total wait time is the slowest single call, not the sum.
     """
-    ticker = ticker.upper()
+    ticker = resolve_ticker(ticker.upper())
 
     with concurrent.futures.ThreadPoolExecutor() as pool:
         price_f = pool.submit(get_ticker_data, ticker)
