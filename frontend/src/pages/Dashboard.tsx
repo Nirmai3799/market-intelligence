@@ -19,9 +19,24 @@ interface EconEvent {
   previous: string | null
 }
 
+const EXCHANGES = [
+  { code: 'AUTO', label: 'Any market',      suffix: '',    flag: '🌍' },
+  { code: 'US',   label: 'US (NYSE/NASDAQ)',suffix: '',    flag: '🇺🇸' },
+  { code: 'NSE',  label: 'India (NSE)',      suffix: '.NS', flag: '🇮🇳' },
+  { code: 'BSE',  label: 'India (BSE)',      suffix: '.BO', flag: '🇮🇳' },
+  { code: 'LSE',  label: 'UK (LSE)',         suffix: '.L',  flag: '🇬🇧' },
+  { code: 'FRA',  label: 'Germany (Xetra)', suffix: '.DE', flag: '🇩🇪' },
+  { code: 'TSE',  label: 'Japan (TSE)',      suffix: '.T',  flag: '🇯🇵' },
+  { code: 'TSX',  label: 'Canada (TSX)',     suffix: '.TO', flag: '🇨🇦' },
+  { code: 'ASX',  label: 'Australia (ASX)', suffix: '.AX', flag: '🇦🇺' },
+  { code: 'HKEX', label: 'Hong Kong (HKEX)',suffix: '.HK', flag: '🇭🇰' },
+  { code: 'SGX',  label: 'Singapore (SGX)', suffix: '.SI', flag: '🇸🇬' },
+]
+
 export default function Dashboard() {
   const [searchParams] = useSearchParams()
   const [input, setInput]               = useState('')
+  const [exchange, setExchange]         = useState(EXCHANGES[0])
   const [ticker, setTicker]             = useState('')
   const [price, setPrice]               = useState<PriceData | null>(null)
   const [analysis, setAnalysis]         = useState<Analysis | null>(null)
@@ -48,9 +63,12 @@ export default function Dashboard() {
       .catch(() => {})
   }, [])
 
-  const handleAnalyze = async (tickerOverride?: string) => {
-    const t = (tickerOverride ?? input).trim().toUpperCase()
-    if (!t) return
+  const handleAnalyze = async (tickerOverride?: string, exchangeOverride?: typeof EXCHANGES[0]) => {
+    const raw = (tickerOverride ?? input).trim().toUpperCase()
+    if (!raw) return
+    const ex = exchangeOverride ?? exchange
+    // Append suffix only if the ticker doesn't already have an exchange dot
+    const t = (ex.suffix && !raw.includes('.')) ? raw + ex.suffix : raw
 
     setLoading(true)
     setAnalystLoading(true)
@@ -109,13 +127,30 @@ export default function Dashboard() {
         )}
 
         {/* Search bar */}
-        <div className="flex gap-3 mb-8">
+        <div className="flex gap-2 mb-8">
+          {/* Exchange / country selector */}
+          <div className="relative">
+            <select
+              value={exchange.code}
+              onChange={(e) => setExchange(EXCHANGES.find(x => x.code === e.target.value) ?? EXCHANGES[0])}
+              className="appearance-none h-full bg-gray-900 border border-gray-700 rounded-xl pl-3 pr-7 py-3 text-white focus:outline-none focus:border-blue-500 transition text-sm cursor-pointer"
+              title="Select stock exchange"
+            >
+              {EXCHANGES.map((ex) => (
+                <option key={ex.code} value={ex.code}>
+                  {ex.flag} {ex.label}
+                </option>
+              ))}
+            </select>
+            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">▾</span>
+          </div>
+
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
-            placeholder="Enter ticker symbol — QQQ, AAPL, NVDA, SPY, TSLA..."
+            placeholder={exchange.suffix ? `Ticker (e.g. RELIANCE, TCS, INFY)` : 'Ticker — AAPL, NVDA, SPY, TSLA...'}
             className="flex-1 bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 transition"
           />
           <button
