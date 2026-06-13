@@ -1,9 +1,12 @@
+import logging
 import smtplib
 import concurrent.futures
 from collections import defaultdict
 from datetime import datetime, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+
+log = logging.getLogger(__name__)
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -12,6 +15,12 @@ from app.core.config import settings
 from app.models.alert import Alert
 from app.models.user import User
 
+
+CURRENCY_SYMBOLS: dict[str, str] = {
+    "USD": "$",  "INR": "₹",  "GBP": "£",  "EUR": "€",
+    "JPY": "¥",  "CNY": "¥",  "CAD": "C$", "AUD": "A$",
+    "HKD": "HK$","SGD": "S$", "KRW": "₩",  "CHF": "Fr",
+}
 
 VALID_CONDITIONS = {"price_above", "price_below", "change_pct_above", "change_pct_below"}
 
@@ -54,27 +63,29 @@ def delete_alert(alert_id: int, user: User, db: Session) -> None:
 
 # ─── Core checking logic ───────────────────────────────────────────────────────
 
-def _evaluate_alerts(active_alerts: list[Alert], prices: dict) -> list[tuple[Alert, float, float]]:
-    """Return (alert, current_price, change_pct) for every alert that fired."""
+def _evaluate_alerts(active_alerts: list[Alert], prices: dict) -> list[tuple[Alert, float, float, str]]:
+    """Return (alert, current_price, change_pct, currency) for every alert that fired."""
     fired = []
     for alert in active_alerts:
         data = prices.get(alert.ticker)
         if not data:
             continue
-        price = data.get("price", 0)
-        chg   = data.get("change_pct", 0) or 0
-        if   alert.condition == "price_above"      and price >= alert.threshold: fired.append((alert, price, chg))
-        elif alert.condition == "price_below"      and price <= alert.threshold: fired.append((alert, price, chg))
-        elif alert.condition == "change_pct_above" and chg   >= alert.threshold: fired.append((alert, price, chg))
-        elif alert.condition == "change_pct_below" and chg   <= alert.threshold: fired.append((alert, price, chg))
+        price    = data.get("price", 0)
+        chg      = data.get("change_pct", 0) or 0
+        currency = data.get("currency", "USD")
+        if   alert.condition == "price_above"      and price >= alert.threshold: fired.append((alert, price, chg, currency))
+        elif alert.condition == "price_below"      and price <= alert.threshold: fired.append((alert, price, chg, currency))
+        elif alert.condition == "change_pct_above" and chg   >= alert.threshold: fired.append((alert, price, chg, currency))
+        elif alert.condition == "change_pct_below" and chg   <= alert.threshold: fired.append((alert, price, chg, currency))
     return fired
 
 
-def _build_message(alert: Alert, price: float, chg: float) -> str:
+def _build_message(alert: Alert, price: float, chg: float, currency: str = "USD") -> str:
+    sym   = CURRENCY_SYMBOLS.get(currency, currency + " ")
     label = CONDITION_LABELS.get(alert.condition, alert.condition)
     if "pct" in alert.condition:
         return f"{alert.ticker} — {label} {alert.threshold}% · currently {chg:+.2f}%"
-    return f"{alert.ticker} — {label} ${alert.threshold} · currently ${price:.2f}"
+    return f"{alert.ticker} — {label} {sym}{alert.threshold} · currently {sym}{price:.2f}"
 
 
 # ─── Enriched context (Claude + snapshot) ─────────────────────────────────────
@@ -94,7 +105,8 @@ def _hex_color(sentiment: str) -> str:
     return {"Bullish": "#22c55e", "Bearish": "#ef4444"}.get(sentiment, "#f59e0b")
 
 
-def _ticker_section(ticker: str, messages: list[str], price: float, chg: float, ctx: dict | None, condition_raw: str) -> str:
+def _ticker_section(ticker: str, messages: list[str], price: float, chg: float, ctx: dict | None, condition_raw: str, currency: str = "USD") -> str:
+    sym = CURRENCY_SYMBOLS.get(currency, currency + " ")
     is_up    = "above" in condition_raw
     accent   = "#22c55e" if is_up else "#ef4444"
     hdr_bg   = "#052e16" if is_up else "#450a0a"
@@ -209,7 +221,7 @@ def _ticker_section(ticker: str, messages: list[str], price: float, chg: float, 
       <!-- Price -->
       <tr><td style="background:#1a1a1a;padding:16px 22px;border-top:1px solid #2a2a2a;">
         <div style="color:#94a3b8;font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Current Price</div>
-        <span style="color:#fff;font-size:32px;font-weight:800;">${price:.2f}</span>
+        <span style="color:#fff;font-size:32px;font-weight:800;">{sym}{price:.2f}</span>
         <span style="color:{chg_col};font-size:16px;font-weight:600;margin-left:10px;">{chg_sign}{chg:.2f}% today</span>
       </td></tr>
 
@@ -242,6 +254,7 @@ def _build_html(triggered: list[dict], enriched: dict) -> str:
     price_map:  dict[str, float] = {}
     chg_map:    dict[str, float] = {}
     cond_map:   dict[str, str]   = {}
+    curr_map:   dict[str, str]   = {}
 
     for t in triggered:
         tk = t["ticker"]
@@ -249,9 +262,10 @@ def _build_html(triggered: list[dict], enriched: dict) -> str:
         price_map.setdefault(tk, t.get("current_price", 0))
         chg_map.setdefault(tk,   t.get("change_pct", 0))
         cond_map.setdefault(tk,  t.get("condition_raw", "price_below"))
+        curr_map.setdefault(tk,  t.get("currency", "USD"))
 
     sections = "".join(
-        _ticker_section(tk, msgs, price_map[tk], chg_map[tk], enriched.get(tk), cond_map[tk])
+        _ticker_section(tk, msgs, price_map[tk], chg_map[tk], enriched.get(tk), cond_map[tk], curr_map[tk])
         for tk, msgs in by_ticker.items()
     )
 
@@ -325,8 +339,8 @@ def send_alert_email(to_email: str, triggered: list[dict], enriched: dict | None
             srv.starttls()
             srv.login(settings.EMAIL_FROM, settings.EMAIL_PASSWORD)
             srv.send_message(msg)
-    except Exception:
-        pass  # email failure must never crash the app
+    except Exception as e:
+        log.error("Alert email failed to %s: %s", to_email, e)  # never crashes the app
 
 
 # ─── On-demand check (user clicks "Check Now" or page loads) ──────────────────
@@ -352,7 +366,7 @@ def check_alerts(user: User, db: Session) -> list[dict]:
 
     fired_rows = _evaluate_alerts(active, prices)
     result = []
-    for alert, price, chg in fired_rows:
+    for alert, price, chg, currency in fired_rows:
         alert.triggered_at = datetime.now(timezone.utc)
         alert.is_active    = False
         result.append({
@@ -363,7 +377,8 @@ def check_alerts(user: User, db: Session) -> list[dict]:
             "threshold":     alert.threshold,
             "current_price": price,
             "change_pct":    chg,
-            "message":       _build_message(alert, price, chg),
+            "currency":      currency,
+            "message":       _build_message(alert, price, chg, currency),
         })
     db.commit()
 
@@ -411,7 +426,7 @@ def check_all_users_alerts() -> None:
 
         # Mark triggered and group by user
         user_triggered: dict[int, list[dict]] = defaultdict(list)
-        for alert, price, chg in fired_rows:
+        for alert, price, chg, currency in fired_rows:
             alert.triggered_at = datetime.now(timezone.utc)
             alert.is_active    = False
             user_triggered[alert.user_id].append({
@@ -419,7 +434,8 @@ def check_all_users_alerts() -> None:
                 "condition_raw": alert.condition,
                 "current_price": price,
                 "change_pct":    chg,
-                "message":       _build_message(alert, price, chg),
+                "currency":      currency,
+                "message":       _build_message(alert, price, chg, currency),
             })
         db.commit()
 

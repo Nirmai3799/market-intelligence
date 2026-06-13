@@ -1,17 +1,43 @@
-fastapi
-uvicorn[standard]
-python-dotenv
-psycopg2-binary
-sqlalchemy
-asyncpg
-redis
-anthropic
-openai
-httpx
-python-jose[cryptography]
-passlib[bcrypt]
+# Market Intelligence 
+# Install: pip install -r requirements.txt
+
+# ── Web framework ──────────────────────────────────────────────────────────────
+fastapi==0.136.3
+uvicorn==0.49.0
+starlette==1.2.1
+httpx==0.28.1
+
+# ── Database ───────────────────────────────────────────────────────────────────
+sqlalchemy==2.0.50
+psycopg2-binary==2.9.12
+asyncpg==0.31.0
+
+# ── Cache ──────────────────────────────────────────────────────────────────────
+redis==8.0.0
+
+# ── Auth ───────────────────────────────────────────────────────────────────────
+python-jose==3.5.0
+passlib==1.7.4
 bcrypt==4.0.1
-yfinance
-newsapi-python
-youtube-transcript-api
-yt-dlp
+
+# ── AI ─────────────────────────────────────────────────────────────────────────
+anthropic==0.107.1
+openai==2.41.0
+
+# ── Market data ────────────────────────────────────────────────────────────────
+yfinance==1.4.1
+pandas==2.3.3
+numpy==2.2.6
+newsapi-python==0.2.7
+
+# ── YouTube intelligence ───────────────────────────────────────────────────────
+youtube-transcript-api==1.2.4
+yt-dlp==2026.6.9
+
+# ── Background scheduler (alert checker) ──────────────────────────────────────
+APScheduler==3.11.2
+
+# ── Config & utilities ────────────────────────────────────────────────────────
+python-dotenv==1.2.2
+pydantic==2.13.4
+requests==2.34.2

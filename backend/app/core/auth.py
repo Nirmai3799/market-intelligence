@@ -4,12 +4,12 @@ from jose import JWTError, jwt
 from app.core.config import settings
 
 ALGORITHM = "HS256"
-TOKEN_EXPIRE_DAYS = 7
+TOKEN_EXPIRE_MINUTES = 60
 
 
 def create_access_token(user_id: int) -> str:
-    """Create a JWT token that expires in 7 days."""
-    expire = datetime.now(timezone.utc) + timedelta(days=TOKEN_EXPIRE_DAYS)
+    """Create a JWT token that expires in 60 minutes."""
+    expire = datetime.now(timezone.utc) + timedelta(minutes=TOKEN_EXPIRE_MINUTES)
     payload = {"sub": str(user_id), "exp": expire}
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=ALGORITHM)
 

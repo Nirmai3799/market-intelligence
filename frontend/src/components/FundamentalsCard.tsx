@@ -20,9 +20,16 @@ function fmtLarge(v: number | null, sym: string): string {
 // Color helpers — each metric has a known "good" direction
 function peColor(v: number | null) {
   if (v == null) return 'text-gray-400'
+  if (v < 0)  return 'text-orange-400'  // negative P/E = unprofitable
   if (v < 15) return 'text-green-400'
   if (v < 30) return 'text-yellow-400'
   return 'text-red-400'
+}
+
+function fmtPE(v: number | null): string {
+  if (v == null) return '—'
+  if (v < 0) return `${v.toFixed(1)}x ⚠`  // flag negative clearly
+  return v.toFixed(2) + 'x'
 }
 function marginColor(v: number | null) {
   if (v == null) return 'text-gray-400'
@@ -91,16 +98,32 @@ export default function FundamentalsCard({ data }: { data: Fundamentals }) {
     <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
       <h3 className="text-white font-semibold text-base mb-5">Fundamental Analysis</h3>
 
+      {data.is_etf && (
+        <div className="mb-4 bg-blue-950 border border-blue-800 rounded-xl px-4 py-3">
+          <p className="text-blue-300 text-sm font-medium">ETF / Fund</p>
+          <p className="text-blue-400 text-xs mt-0.5">
+            P/E, margins, ROE, and earnings metrics don't apply to funds — only price-based ratios are shown.
+          </p>
+        </div>
+      )}
+
       {/* ── Valuation ─────────────────────────────────────────────────────── */}
       <SectionTitle>Valuation</SectionTitle>
       <div className="grid grid-cols-3 gap-4 sm:grid-cols-6">
-        <Metric label="P/E (TTM)"    value={fmt(data.pe_trailing)} color={peColor(data.pe_trailing)} />
-        <Metric label="Fwd P/E"      value={fmt(data.pe_forward)}  color={peColor(data.pe_forward)}  />
+        <Metric label="P/E (TTM)"    value={fmtPE(data.pe_trailing)} color={peColor(data.pe_trailing)} />
+        <Metric label="Fwd P/E"      value={fmtPE(data.pe_forward)}  color={peColor(data.pe_forward)}  />
         <Metric label="P/B"          value={fmt(data.pb_ratio)}    color={data.pb_ratio != null && data.pb_ratio < 3 ? 'text-green-400' : 'text-yellow-400'} />
         <Metric label="EV/EBITDA"    value={fmt(data.ev_ebitda)}   color={data.ev_ebitda != null && data.ev_ebitda < 15 ? 'text-green-400' : data.ev_ebitda != null && data.ev_ebitda < 25 ? 'text-yellow-400' : 'text-red-400'} />
         <Metric label="PEG"          value={fmt(data.peg_ratio)}   color={data.peg_ratio != null && data.peg_ratio < 1 ? 'text-green-400' : data.peg_ratio != null && data.peg_ratio < 2 ? 'text-yellow-400' : 'text-red-400'} />
         <Metric label="P/S"          value={fmt(data.ps_ratio)}    color="text-white" />
       </div>
+
+      {/* Negative P/E warning */}
+      {(data.pe_trailing != null && data.pe_trailing < 0) && (
+        <p className="text-orange-400 text-xs mt-2">
+          ⚠ Negative P/E — company is currently loss-making. EPS and margins below give a clearer picture.
+        </p>
+      )}
 
       <Divider />
 
@@ -144,19 +167,35 @@ export default function FundamentalsCard({ data }: { data: Fundamentals }) {
       <div className="grid grid-cols-2 gap-6">
         <div>
           <SectionTitle>Returns</SectionTitle>
-          <div className="grid grid-cols-2 gap-4">
-            <Metric label="ROE" value={fmt(data.roe, '%')} color={roeColor(data.roe)} />
-            <Metric label="ROA" value={fmt(data.roa, '%')} color={roeColor(data.roa)} />
+          <div className="grid grid-cols-3 gap-4">
+            <Metric label="ROE"  value={fmt(data.roe, '%')}  color={roeColor(data.roe)} />
+            <Metric label="ROA"  value={fmt(data.roa, '%')}  color={roeColor(data.roa)} />
+            <Metric label="ROCE" value={fmt(data.roce, '%')} color={roeColor(data.roce)} />
           </div>
         </div>
         <div>
           <SectionTitle>Financial Health</SectionTitle>
-          <div className="grid grid-cols-3 gap-4">
-            <Metric label="Debt/Equity"    value={fmt(data.debt_to_equity)} color={debtColor(data.debt_to_equity)} />
-            <Metric label="Current Ratio"  value={fmt(data.current_ratio)}  color={crColor(data.current_ratio)}   />
-            <Metric label="Quick Ratio"    value={fmt(data.quick_ratio)}    color={crColor(data.quick_ratio)}     />
+          <div className="grid grid-cols-2 gap-4">
+            <Metric label="Debt/Equity"   value={fmt(data.debt_to_equity)} color={debtColor(data.debt_to_equity)} />
+            <Metric label="Int. Coverage" value={data.interest_coverage != null ? `${data.interest_coverage}×` : '—'}
+                    color={data.interest_coverage != null ? (data.interest_coverage > 3 ? 'text-green-400' : data.interest_coverage > 1.5 ? 'text-yellow-400' : 'text-red-400') : 'text-gray-400'} />
+            <Metric label="Current Ratio" value={fmt(data.current_ratio)}  color={crColor(data.current_ratio)}   />
+            <Metric label="Quick Ratio"   value={fmt(data.quick_ratio)}    color={crColor(data.quick_ratio)}     />
           </div>
         </div>
+      </div>
+
+      <Divider />
+
+      {/* ── Growth CAGR + Cash ───────────────────────────────────────────────── */}
+      <SectionTitle>Business Quality</SectionTitle>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <Metric label="Rev CAGR (3yr)"   value={fmt(data.revenue_cagr_3y, '%')}   color={growthColor(data.revenue_cagr_3y)} />
+        <Metric label="Cash"             value={fmtLarge(data.cash, sym)}          color="text-white" />
+        <Metric label="Insider Holding"  value={data.insider_pct != null ? `${data.insider_pct}%` : '—'}
+                color={data.insider_pct != null && data.insider_pct > 5 ? 'text-green-400' : 'text-gray-400'} />
+        <Metric label="Institutional"    value={data.institutional_pct != null ? `${data.institutional_pct}%` : '—'}
+                color="text-white" />
       </div>
 
       <Divider />

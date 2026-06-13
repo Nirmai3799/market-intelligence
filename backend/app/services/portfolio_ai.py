@@ -17,6 +17,12 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.user import User
 
+CURRENCY_SYMBOLS: dict[str, str] = {
+    "USD": "$", "INR": "₹", "GBP": "£", "EUR": "€",
+    "JPY": "¥", "CNY": "¥", "CAD": "C$", "AUD": "A$",
+    "HKD": "HK$", "SGD": "S$", "KRW": "₩", "CHF": "Fr",
+}
+
 
 def analyze_portfolio(user: User, db: Session) -> dict:
     from app.services.portfolio_service import get_portfolio_summary
@@ -28,16 +34,22 @@ def analyze_portfolio(user: User, db: Session) -> dict:
 
     holdings = summary["holdings"]
 
+    # Detect unique currencies in portfolio
+    currencies = list(dict.fromkeys(h.get("currency", "USD") for h in holdings))
+    is_multi_currency = len(currencies) > 1
+
     # Build a readable text block for each position
     lines = []
     for h in holdings:
-        gl_sign = "+" if h["gain_loss"] >= 0 else ""
+        currency  = h.get("currency", "USD")
+        sym       = CURRENCY_SYMBOLS.get(currency, currency + " ")
+        gl_sign   = "+" if h["gain_loss"] >= 0 else ""
         today_sign = "+" if h["change_today_pct"] >= 0 else ""
         pct = h["gain_loss_pct"]
         lines.append(
-            f"  {h['ticker']}: {h['shares']} shares | avg cost ${h['avg_buy_price']} | "
-            f"now ${h['current_price']} | value ${h['current_value']:,.0f} | "
-            f"P&L {gl_sign}${h['gain_loss']:,.0f} ({gl_sign}{pct:.1f}%) | "
+            f"  {h['ticker']} ({currency}): {h['shares']} shares | avg cost {sym}{h['avg_buy_price']} | "
+            f"now {sym}{h['current_price']} | value {sym}{h['current_value']:,.0f} | "
+            f"P&L {gl_sign}{sym}{h['gain_loss']:,.0f} ({gl_sign}{pct:.1f}%) | "
             f"today {today_sign}{h['change_today_pct']:.2f}%"
         )
 
@@ -46,12 +58,22 @@ def analyze_portfolio(user: User, db: Session) -> dict:
     total_sign = "+" if summary["total_gain_loss"] >= 0 else ""
     total_pct  = summary["total_gain_loss_pct"]
 
+    # For summary header use the primary / first currency symbol
+    primary_sym = CURRENCY_SYMBOLS.get(currencies[0], currencies[0] + " ") if currencies else "$"
+    currency_note = (
+        f"NOTE: This is a multi-currency portfolio ({', '.join(currencies)}). "
+        "Totals are approximate mixed-currency sums — treat them as a rough guide only."
+        if is_multi_currency else f"All positions in {currencies[0]}."
+    )
+
     prompt = f"""You are a portfolio risk analyst. Review this investment portfolio and return ONLY a JSON object — no markdown.
 
+{currency_note}
+
 PORTFOLIO SUMMARY:
-  Total Invested:  ${summary['total_invested']:,.0f}
-  Current Value:   ${summary['total_current_value']:,.0f}
-  Total P&L:       {total_sign}${summary['total_gain_loss']:,.0f} ({total_sign}{total_pct:.1f}%)
+  Total Invested:  {primary_sym}{summary['total_invested']:,.0f}
+  Current Value:   {primary_sym}{summary['total_current_value']:,.0f}
+  Total P&L:       {total_sign}{primary_sym}{summary['total_gain_loss']:,.0f} ({total_sign}{total_pct:.1f}%)
   Number of positions: {len(holdings)}
 
 POSITIONS:

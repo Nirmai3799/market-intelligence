@@ -27,6 +27,20 @@ function ExtendedHoursTag({ label, price, changePct, currency }: {
   )
 }
 
+function DataSourceBadge({ source }: { source?: string }) {
+  if (!source) return null
+  const isLive = source.includes('finnhub') || source.includes('twelvedata')
+  return (
+    <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+      isLive
+        ? 'bg-green-950 text-green-500 border border-green-900'
+        : 'bg-yellow-950 text-yellow-600 border border-yellow-900'
+    }`}>
+      {isLive ? '● LIVE' : '⏱ ~15min delay'}
+    </span>
+  )
+}
+
 export default function PriceCard({ data }: { data: PriceData }) {
   const isUp = (data.change_pct ?? 0) >= 0
   const hasPreMarket  = data.pre_market_price != null && data.pre_market_price > 0
@@ -41,6 +55,7 @@ export default function PriceCard({ data }: { data: PriceData }) {
           <h2 className="text-white font-semibold">{data.name}</h2>
         </div>
         <div className="flex items-center gap-2">
+          <DataSourceBadge source={data.data_source} />
           {cur && cur !== 'USD' && (
             <span className="text-gray-600 text-xs border border-gray-700 rounded px-1.5 py-0.5">{cur}</span>
           )}

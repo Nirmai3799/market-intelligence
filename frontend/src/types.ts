@@ -17,6 +17,7 @@ export interface PriceData {
   pre_market_change_pct?: number | null
   post_market_price?: number | null
   post_market_change_pct?: number | null
+  data_source?: string
 }
 
 export interface Analysis {
@@ -36,6 +37,17 @@ export interface Technicals {
   rsi_signal: string
   macd_histogram: number
   macd_signal: string
+  stoch_k: number | null
+  stoch_d: number | null
+  stoch_signal: string
+  atr: number
+  atr_pct: number
+  obv_trend: string
+  roc: number | null
+  vol_trend_signal: string
+  vol_ratio_5d: number
+  trend_structure: string
+  trend_bias: string
   bollinger_upper: number
   bollinger_middle: number
   bollinger_lower: number
@@ -43,7 +55,23 @@ export interface Technicals {
   sma_50: number | null
   sma_200: number | null
   ma_trend: string
+  fib_levels: Record<string, number>
+  fib_context: string
   next_earnings: string | null
+}
+
+export interface Synthesis {
+  score: number
+  zone: string
+  zone_color: 'green' | 'yellow' | 'red'
+  action: string
+  bullish_signals: string[]
+  bearish_signals: string[]
+  stop_loss: number | null
+  target_1: number | null
+  target_2: number | null
+  rr_ratio: number | null
+  rules: Array<{ rule: string; pass: boolean; note: string }>
 }
 
 export interface MarketContext {
@@ -83,6 +111,7 @@ export interface Holding {
   gain_loss_pct: number
   change_today_pct: number
   sector?: string | null
+  currency: string
 }
 
 export interface Alert {
@@ -140,15 +169,20 @@ export interface AnalystData {
 export interface Fundamentals {
   ticker: string
   currency: string
+  is_etf?: boolean
   pe_trailing: number | null;  pe_forward: number | null
   pb_ratio: number | null;     ev_ebitda: number | null
   peg_ratio: number | null;    ps_ratio: number | null
   revenue: number | null;      revenue_growth: number | null
+  revenue_cagr_3y: number | null
   earnings_growth: number | null; ebitda: number | null
   free_cash_flow: number | null
   gross_margin: number | null; operating_margin: number | null; net_margin: number | null
-  roe: number | null;          roa: number | null
+  roe: number | null;          roa: number | null;  roce: number | null
   debt_to_equity: number | null; current_ratio: number | null; quick_ratio: number | null
+  interest_coverage: number | null
+  cash: number | null
+  insider_pct: number | null;  institutional_pct: number | null
   eps_trailing: number | null; eps_forward: number | null
   book_value: number | null;   beta: number | null
   dividend_yield: number | null; payout_ratio: number | null

@@ -8,9 +8,10 @@ import TechnicalCard from '../components/TechnicalCard'
 import MarketContextCard from '../components/MarketContextCard'
 import AnalystCard from '../components/AnalystCard'
 import FundamentalsCard from '../components/FundamentalsCard'
+import SynthesisCard from '../components/SynthesisCard'
 import ChartCard from '../components/ChartCard'
 import ChatPanel from '../components/ChatPanel'
-import type { PriceData, Analysis, NewsArticle, Technicals, MarketContext, AnalystData, Fundamentals } from '../types'
+import type { PriceData, Analysis, NewsArticle, Technicals, MarketContext, AnalystData, Fundamentals, Synthesis } from '../types'
 
 interface EconEvent {
   event: string
@@ -46,6 +47,7 @@ export default function Dashboard() {
   const [analystData, setAnalystData]       = useState<AnalystData | null>(null)
   const [fundamentals, setFundamentals]     = useState<Fundamentals | null>(null)
   const [fundamentalsLoading, setFundamentalsLoading] = useState(false)
+  const [synthesis, setSynthesis]           = useState<Synthesis | null>(null)
   const [fullContext, setFullContext]    = useState<object | null>(null)
   const [news, setNews]                 = useState<NewsArticle[]>([])
   const [econEvents, setEconEvents]     = useState<EconEvent[]>([])
@@ -83,6 +85,7 @@ export default function Dashboard() {
     setMarketContext(null)
     setAnalystData(null)
     setFundamentals(null)
+    setSynthesis(null)
     setFullContext(null)
     setNews([])
 
@@ -93,6 +96,8 @@ export default function Dashboard() {
         setAnalysis(d.analysis)
         setTechnicals(d.technicals ?? null)
         setMarketContext(d.market_context ?? null)
+        setSynthesis(d.synthesis ?? null)
+        if (d.fundamentals) setFundamentals(d.fundamentals)
         setNews(d.news ?? [])
         setFullContext(d)
       })
@@ -191,7 +196,10 @@ export default function Dashboard() {
               <AnalysisCard data={analysis} ticker={ticker} currency={price?.currency} />
             </div>
 
-            {/* Row 2: Chart */}
+            {/* Row 2: Synthesis Decision */}
+            {synthesis && <SynthesisCard data={synthesis} currency={price?.currency} />}
+
+            {/* Row 3: Chart */}
             <ChartCard ticker={ticker} currency={price?.currency} />
 
             {/* Row 3: Technicals + Market Context */}

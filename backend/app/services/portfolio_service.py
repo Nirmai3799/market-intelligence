@@ -13,8 +13,12 @@ def add_holding(user_id: int, ticker: str, shares: float, avg_buy_price: float, 
     ).first()
 
     if existing:
-        existing.shares = shares
-        existing.avg_buy_price = avg_buy_price
+        # Accumulate shares and compute weighted average cost basis
+        total_shares = existing.shares + shares
+        existing.avg_buy_price = (
+            (existing.shares * existing.avg_buy_price) + (shares * avg_buy_price)
+        ) / total_shares
+        existing.shares = total_shares
         db.commit()
         db.refresh(existing)
         return existing
@@ -71,10 +75,12 @@ def get_portfolio_summary(user_id: int, db: Session) -> dict:
             current_price = price_data["price"]
             change_pct_today = price_data.get("change_pct", 0) or 0
             sector = price_data.get("sector")
+            currency = price_data.get("currency", "USD")
         else:
             current_price = h.avg_buy_price
             change_pct_today = 0
             sector = None
+            currency = "USD"
 
         cost_basis = h.shares * h.avg_buy_price
         current_value = h.shares * current_price
@@ -96,6 +102,7 @@ def get_portfolio_summary(user_id: int, db: Session) -> dict:
             "gain_loss_pct": round(gain_loss_pct, 2),
             "change_today_pct": change_pct_today,
             "sector": sector,
+            "currency": currency,
         })
 
     total_gain_loss = total_current_value - total_invested

@@ -76,11 +76,13 @@ def get_sector_performance() -> list:
     for etf, name in SECTOR_ETFS.items():
         try:
             info = yf.Ticker(etf).info
-            change_pct = info.get("regularMarketChangePercent") or 0
+            raw_chg = info.get("regularMarketChangePercent")
+            # Explicit None check so a genuine 0.0% change isn't treated as missing
+            change_pct = float(raw_chg) if raw_chg is not None else 0.0
             results.append({
                 "etf": etf,
                 "sector": name,
-                "change_pct": round(float(change_pct), 2),
+                "change_pct": round(change_pct, 2),
             })
         except Exception:
             continue

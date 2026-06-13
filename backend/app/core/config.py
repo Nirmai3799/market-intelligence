@@ -8,6 +8,8 @@ class Settings:
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     NEWSAPI_KEY: str = os.getenv("NEWSAPI_KEY", "")
     FINNHUB_API_KEY: str = os.getenv("FINNHUB_API_KEY", "")
+    FMP_API_KEY: str = os.getenv("FMP_API_KEY", "")           # Financial Modeling Prep
+    TWELVE_DATA_API_KEY: str = os.getenv("TWELVE_DATA_API_KEY", "")  # International real-time prices
     JWT_SECRET: str = os.getenv("JWT_SECRET", "")
     APP_ENV: str = os.getenv("APP_ENV", "development")
     APP_PORT: int = int(os.getenv("APP_PORT", "8000"))

@@ -5,6 +5,7 @@ import {
 } from 'recharts'
 import { getPortfolioSummary, addHolding, removeHolding, getPortfolioAI } from '../api/client'
 import PortfolioTable from '../components/PortfolioTable'
+import { currencySymbol, fmtMoney } from '../utils/currency'
 import type { PortfolioSummary, Holding } from '../types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -192,7 +193,7 @@ function AISection({ holdings }: { holdings: Holding[] }) {
     setError('')
     try {
       const res = await getPortfolioAI()
-      setAnalysis(res.data)
+      setAnalysis(res.data.analysis)
     } catch {
       setError('Failed to get AI analysis.')
     } finally {
@@ -344,6 +345,25 @@ export default function Portfolio() {
 
   const isUp = (summary?.total_gain_loss ?? 0) >= 0
 
+  // Detect if holdings span multiple currencies
+  const uniqueCurrencies = summary
+    ? [...new Set(summary.holdings.map((h) => h.currency || 'USD'))]
+    : ['USD']
+  const isMixed = uniqueCurrencies.length > 1
+
+  // Per-currency totals for mixed portfolios
+  const currencyTotals = isMixed && summary
+    ? uniqueCurrencies.map((cur) => {
+        const group = summary.holdings.filter((h) => (h.currency || 'USD') === cur)
+        const invested = group.reduce((s, h) => s + h.cost_basis, 0)
+        const value = group.reduce((s, h) => s + h.current_value, 0)
+        return { cur, sym: currencySymbol(cur), invested, value, gl: value - invested }
+      })
+    : null
+
+  // Single-currency symbol for non-mixed portfolios
+  const singleSym = isMixed ? '$' : currencySymbol(uniqueCurrencies[0])
+
   return (
     <div className="min-h-screen bg-gray-950">
       <div className="max-w-6xl mx-auto px-6 py-8">
@@ -354,23 +374,53 @@ export default function Portfolio() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
               <p className="text-gray-600 text-xs uppercase tracking-wider mb-1">Total Invested</p>
-              <p className="text-white text-xl font-bold">${summary.total_invested.toLocaleString()}</p>
+              {isMixed && currencyTotals ? (
+                <div className="space-y-0.5">
+                  {currencyTotals.map((t) => (
+                    <p key={t.cur} className="text-white text-base font-bold">{fmtMoney(t.invested, t.cur)}</p>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-white text-xl font-bold">{fmtMoney(summary.total_invested, uniqueCurrencies[0])}</p>
+              )}
             </div>
             <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
               <p className="text-gray-600 text-xs uppercase tracking-wider mb-1">Current Value</p>
-              <p className="text-white text-xl font-bold">${summary.total_current_value.toLocaleString()}</p>
+              {isMixed && currencyTotals ? (
+                <div className="space-y-0.5">
+                  {currencyTotals.map((t) => (
+                    <p key={t.cur} className="text-white text-base font-bold">{fmtMoney(t.value, t.cur)}</p>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-white text-xl font-bold">{fmtMoney(summary.total_current_value, uniqueCurrencies[0])}</p>
+              )}
             </div>
             <div className={`bg-gray-900 rounded-xl p-4 border ${isUp ? 'border-green-900' : 'border-red-900'}`}>
               <p className="text-gray-600 text-xs uppercase tracking-wider mb-1">Total P&L</p>
-              <p className={`text-xl font-bold ${isUp ? 'text-green-400' : 'text-red-400'}`}>
-                {isUp ? '+' : ''}${summary.total_gain_loss.toLocaleString()}
-              </p>
+              {isMixed && currencyTotals ? (
+                <div className="space-y-0.5">
+                  {currencyTotals.map((t) => {
+                    const up = t.gl >= 0
+                    return (
+                      <p key={t.cur} className={`text-base font-bold ${up ? 'text-green-400' : 'text-red-400'}`}>
+                        {up ? '+' : '-'}{t.sym}{Math.abs(t.gl).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      </p>
+                    )
+                  })}
+                </div>
+              ) : (
+                <p className={`text-xl font-bold ${isUp ? 'text-green-400' : 'text-red-400'}`}>
+                  {isUp ? '+' : '-'}{singleSym}{Math.abs(summary.total_gain_loss).toLocaleString()}
+                </p>
+              )}
             </div>
             <div className={`bg-gray-900 rounded-xl p-4 border ${isUp ? 'border-green-900' : 'border-red-900'}`}>
               <p className="text-gray-600 text-xs uppercase tracking-wider mb-1">Total Return</p>
               <p className={`text-xl font-bold ${isUp ? 'text-green-400' : 'text-red-400'}`}>
                 {isUp ? '+' : ''}{summary.total_gain_loss_pct.toFixed(2)}%
               </p>
+              {isMixed && <p className="text-gray-600 text-xs mt-0.5">weighted avg</p>}
             </div>
           </div>
         )}
