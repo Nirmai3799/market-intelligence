@@ -137,6 +137,23 @@ export interface AnalystData {
   }
 }
 
+export interface Fundamentals {
+  ticker: string
+  currency: string
+  pe_trailing: number | null;  pe_forward: number | null
+  pb_ratio: number | null;     ev_ebitda: number | null
+  peg_ratio: number | null;    ps_ratio: number | null
+  revenue: number | null;      revenue_growth: number | null
+  earnings_growth: number | null; ebitda: number | null
+  free_cash_flow: number | null
+  gross_margin: number | null; operating_margin: number | null; net_margin: number | null
+  roe: number | null;          roa: number | null
+  debt_to_equity: number | null; current_ratio: number | null; quick_ratio: number | null
+  eps_trailing: number | null; eps_forward: number | null
+  book_value: number | null;   beta: number | null
+  dividend_yield: number | null; payout_ratio: number | null
+}
+
 export interface WatchlistItem {
   id: number
   ticker: string

@@ -12,7 +12,7 @@ from app.core.config import settings
 from app.api import (
     prices, news, snapshot, analysis, auth, portfolio,
     technicals, market, youtube, alerts, analyst, watchlist,
-    chart, economic, screener, compare, chat,
+    chart, economic, screener, compare, chat, fundamentals,
 )
 from app.services.alert_service import check_all_users_alerts
 
@@ -62,6 +62,7 @@ app.include_router(economic.router)
 app.include_router(screener.router)
 app.include_router(compare.router)
 app.include_router(chat.router)
+app.include_router(fundamentals.router)
 
 
 @app.get("/health")

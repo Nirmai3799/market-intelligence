@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { getAnalysis, getAnalystData, getEconomicCal } from '../api/client'
+import { getAnalysis, getAnalystData, getEconomicCal, getFundamentals } from '../api/client'
 import PriceCard from '../components/PriceCard'
 import AnalysisCard from '../components/AnalysisCard'
 import NewsCard from '../components/NewsCard'
 import TechnicalCard from '../components/TechnicalCard'
 import MarketContextCard from '../components/MarketContextCard'
 import AnalystCard from '../components/AnalystCard'
+import FundamentalsCard from '../components/FundamentalsCard'
 import ChartCard from '../components/ChartCard'
 import ChatPanel from '../components/ChatPanel'
-import type { PriceData, Analysis, NewsArticle, Technicals, MarketContext, AnalystData } from '../types'
+import type { PriceData, Analysis, NewsArticle, Technicals, MarketContext, AnalystData, Fundamentals } from '../types'
 
 interface EconEvent {
   event: string
@@ -42,7 +43,9 @@ export default function Dashboard() {
   const [analysis, setAnalysis]         = useState<Analysis | null>(null)
   const [technicals, setTechnicals]     = useState<Technicals | null>(null)
   const [marketContext, setMarketContext] = useState<MarketContext | null>(null)
-  const [analystData, setAnalystData]   = useState<AnalystData | null>(null)
+  const [analystData, setAnalystData]       = useState<AnalystData | null>(null)
+  const [fundamentals, setFundamentals]     = useState<Fundamentals | null>(null)
+  const [fundamentalsLoading, setFundamentalsLoading] = useState(false)
   const [fullContext, setFullContext]    = useState<object | null>(null)
   const [news, setNews]                 = useState<NewsArticle[]>([])
   const [econEvents, setEconEvents]     = useState<EconEvent[]>([])
@@ -79,6 +82,7 @@ export default function Dashboard() {
     setTechnicals(null)
     setMarketContext(null)
     setAnalystData(null)
+    setFundamentals(null)
     setFullContext(null)
     setNews([])
 
@@ -102,6 +106,12 @@ export default function Dashboard() {
       .then((res) => setAnalystData(res.data))
       .catch(() => setAnalystData(null))
       .finally(() => setAnalystLoading(false))
+
+    setFundamentalsLoading(true)
+    getFundamentals(t)
+      .then((res) => setFundamentals(res.data))
+      .catch(() => setFundamentals(null))
+      .finally(() => setFundamentalsLoading(false))
   }
 
   const impactColor = (impact: string) =>
@@ -204,7 +214,15 @@ export default function Dashboard() {
               <AnalystCard data={analystData} currentPrice={price.price} ticker={ticker} />
             )}
 
-            {/* Row 5: News */}
+            {/* Row 5: Fundamental Analysis */}
+            {fundamentalsLoading && (
+              <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5 text-center">
+                <p className="text-gray-600 text-sm">Loading fundamentals...</p>
+              </div>
+            )}
+            {!fundamentalsLoading && fundamentals && <FundamentalsCard data={fundamentals} />}
+
+            {/* Row 6: News */}
             {news.length > 0 && <NewsCard articles={news} />}
 
             {/* Row 6: AI Chat */}

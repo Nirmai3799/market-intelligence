@@ -45,3 +45,5 @@ export const createAlert = (ticker: string, condition: string, threshold: number
   api.post('/alerts', { ticker, condition, threshold })
 export const deleteAlert = (id: number) => api.delete(`/alerts/${id}`)
 export const checkAlerts = () => api.get('/alerts/check')
+
+export const getFundamentals = (ticker: string) => api.get(`/fundamentals/${ticker}`)
