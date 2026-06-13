@@ -8,9 +8,10 @@ venv/
 
 # Environment — NEVER commit
 .env
-.env.*
 .env.local
 .env.*.local
+# but .env.example IS committed — it has no real secrets
+!.env.example
 
 # Frontend build output
 dist/
