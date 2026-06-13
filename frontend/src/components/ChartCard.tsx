@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis,
-  Tooltip, CartesianGrid, ReferenceLine,
+  Tooltip, CartesianGrid,
 } from 'recharts'
 import { getChart } from '../api/client'
+import { currencySymbol } from '../utils/currency'
 
 interface CandlePoint {
   date: string
@@ -21,7 +22,7 @@ const PERIODS = [
   { label: '1Y', value: '1y'  },
 ]
 
-export default function ChartCard({ ticker }: { ticker: string }) {
+export default function ChartCard({ ticker, currency }: { ticker: string; currency?: string }) {
   const [data, setData]       = useState<CandlePoint[]>([])
   const [period, setPeriod]   = useState('3mo')
   const [loading, setLoading] = useState(true)
@@ -44,6 +45,7 @@ export default function ChartCard({ ticker }: { ticker: string }) {
 
   if (!data.length) return null
 
+  const sym   = currencySymbol(currency)
   const first = data[0].close
   const last  = data[data.length - 1].close
   const isUp  = last >= first
@@ -52,6 +54,8 @@ export default function ChartCard({ ticker }: { ticker: string }) {
   const minClose = Math.min(...data.map(d => d.low))
   const maxClose = Math.max(...data.map(d => d.high))
   const padding  = (maxClose - minClose) * 0.05
+
+  const noDecimals = ['JPY', 'KRW', 'IDR'].includes(currency ?? '')
 
   return (
     <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
@@ -88,16 +92,15 @@ export default function ChartCard({ ticker }: { ticker: string }) {
             tick={{ fill: '#6b7280', fontSize: 10 }}
             tickLine={false}
             axisLine={false}
-            tickFormatter={(v) => `$${v.toFixed(0)}`}
-            width={48}
+            tickFormatter={(v) => sym + (noDecimals ? Math.round(v).toLocaleString() : v.toFixed(0))}
+            width={54}
           />
           <Tooltip
             contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151', borderRadius: 8 }}
             labelStyle={{ color: '#9ca3af', fontSize: 11 }}
             itemStyle={{ color: '#f9fafb', fontSize: 12 }}
-            formatter={(val: number) => [`$${val.toFixed(2)}`, '']}
+            formatter={(val: number) => [sym + (noDecimals ? Math.round(val).toLocaleString() : val.toFixed(2)), '']}
           />
-          {/* SMA 20 reference line */}
           <Line
             dataKey="sma20"
             stroke="#3b82f6"
@@ -107,7 +110,6 @@ export default function ChartCard({ ticker }: { ticker: string }) {
             name="SMA 20"
             connectNulls
           />
-          {/* Price line */}
           <Line
             dataKey="close"
             stroke={lineColor}
@@ -124,7 +126,7 @@ export default function ChartCard({ ticker }: { ticker: string }) {
           <span className="text-gray-600 text-xs">SMA 20</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className={`w-4 h-0.5`} style={{ backgroundColor: lineColor }} />
+          <div className="w-4 h-0.5" style={{ backgroundColor: lineColor }} />
           <span className="text-gray-600 text-xs">Close price</span>
         </div>
       </div>

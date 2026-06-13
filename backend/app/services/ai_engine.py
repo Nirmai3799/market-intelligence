@@ -5,6 +5,13 @@ from fastapi import HTTPException
 from app.core.config import settings
 
 
+CURRENCY_SYMBOLS = {
+    'USD': '$', 'INR': '₹', 'GBP': '£', 'EUR': '€',
+    'JPY': '¥', 'CNY': '¥', 'CAD': 'C$', 'AUD': 'A$',
+    'HKD': 'HK$', 'SGD': 'S$', 'KRW': '₩', 'CHF': 'Fr',
+}
+
+
 def build_prompt(snapshot: dict) -> str:
     """
     Build the enhanced Claude prompt from a full snapshot.
@@ -15,6 +22,9 @@ def build_prompt(snapshot: dict) -> str:
     news = snapshot["news"]
     tech = snapshot.get("technicals", {})
     ctx = snapshot.get("market_context", {})
+
+    currency = price.get("currency", "USD")
+    sym = CURRENCY_SYMBOLS.get(currency, currency + " ")
 
     headlines = "\n".join(
         f"- {a['title']} ({a['source']})" for a in news
@@ -43,27 +53,29 @@ def build_prompt(snapshot: dict) -> str:
 
     return f"""You are a professional market analyst. Analyze the comprehensive data below and return ONLY a JSON object — no markdown, no extra text.
 
+IMPORTANT: This stock trades in {currency}. Use the symbol "{sym}" (not "$") for ALL price references in your response.
+
 ═══ TICKER ═══
-{snapshot['ticker']} — {price.get('name', snapshot['ticker'])}
+{snapshot['ticker']} — {price.get('name', snapshot['ticker'])} | Currency: {currency}
 
 ═══ PRICE ACTION ═══
-Current Price:   ${price.get('price')}
-Change Today:    ${price.get('change')} ({price.get('change_pct')}%)
-Day Range:       ${price.get('day_low')} – ${price.get('day_high')}
-Previous Close:  ${price.get('previous_close')}
-52-Week Range:   ${price.get('week_52_low')} – ${price.get('week_52_high')}
+Current Price:   {sym}{price.get('price')}
+Change Today:    {sym}{price.get('change')} ({price.get('change_pct')}%)
+Day Range:       {sym}{price.get('day_low')} – {sym}{price.get('day_high')}
+Previous Close:  {sym}{price.get('previous_close')}
+52-Week Range:   {sym}{price.get('week_52_low')} – {sym}{price.get('week_52_high')}
 Volume:          {f"{vol:,}" if vol else "N/A"} (avg {f"{avg_vol:,}" if avg_vol else "N/A"})
 Volume Signal:   {signals.get('volume_signal')} ({signals.get('volume_ratio')}x average)
-Market Cap:      ${f"{mktcap:,}" if mktcap else "N/A"}
+Market Cap:      {sym}{f"{mktcap:,}" if mktcap else "N/A"}
 {earnings_line}
 
 ═══ TECHNICAL INDICATORS ═══
 RSI (14):        {tech.get('rsi')} → {tech.get('rsi_signal')}
 MACD:            {tech.get('macd_signal')} (histogram: {tech.get('macd_histogram')})
 Bollinger Bands: {tech.get('bollinger_position')}
-  Upper: ${tech.get('bollinger_upper')}  |  Middle: ${tech.get('bollinger_middle')}  |  Lower: ${tech.get('bollinger_lower')}
-50-Day MA:       ${tech.get('sma_50')}
-200-Day MA:      ${tech.get('sma_200')}
+  Upper: {sym}{tech.get('bollinger_upper')}  |  Middle: {sym}{tech.get('bollinger_middle')}  |  Lower: {sym}{tech.get('bollinger_lower')}
+50-Day MA:       {sym}{tech.get('sma_50')}
+200-Day MA:      {sym}{tech.get('sma_200')}
 Long-term Trend: {tech.get('ma_trend')}
 
 ═══ MARKET CONTEXT ═══
@@ -84,8 +96,8 @@ Return ONLY this JSON (no markdown fences):
   "technical_signals": ["<RSI insight>", "<MACD insight>", "<Bollinger insight>", "<MA trend insight>"],
   "market_signals": ["<VIX context>", "<Fear & Greed context>", "<sector rotation note>"],
   "risk_level": "Low" or "Medium" or "High",
-  "watch_levels": ["<key price level 1>", "<key price level 2>", "<key price level 3>"],
-  "one_liner": "<single actionable sentence for a trader right now>"
+  "watch_levels": ["<use {sym} symbol, e.g. {sym}2800 support>", "<level 2>", "<level 3>"],
+  "one_liner": "<actionable sentence; use {sym} for any price, not $>"
 }}"""
 
 

@@ -1,4 +1,5 @@
 import type { Analysis } from '../types'
+import { currencySymbol } from '../utils/currency'
 
 const sentimentStyle = {
   Bullish: 'text-green-400',
@@ -26,7 +27,10 @@ function BulletList({ items, color }: { items: string[]; color: string }) {
   )
 }
 
-export default function AnalysisCard({ data, ticker }: { data: Analysis; ticker: string }) {
+export default function AnalysisCard({ data, ticker, currency }: { data: Analysis; ticker: string; currency?: string }) {
+  const sym = currencySymbol(currency)
+  // Claude always writes $ in watch levels — replace with actual currency symbol
+  const watchLevels = data.watch_levels?.map(l => sym !== '$' ? l.replace(/\$/g, sym) : l)
   return (
     <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
       {/* Header */}
@@ -67,7 +71,7 @@ export default function AnalysisCard({ data, ticker }: { data: Analysis; ticker:
         <span className={`text-xs px-2.5 py-1 rounded-full ${riskStyle[data.risk_level]}`}>
           Risk: {data.risk_level}
         </span>
-        {data.watch_levels?.map((level, i) => (
+        {watchLevels?.map((level, i) => (
           <span key={i} className="text-xs bg-gray-800 text-gray-400 px-2.5 py-1 rounded-full border border-gray-700">
             {level}
           </span>

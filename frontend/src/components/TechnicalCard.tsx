@@ -1,8 +1,10 @@
 import type { Technicals } from '../types'
+import { currencySymbol, fmtMoney } from '../utils/currency'
 
 interface Props {
   technicals: Technicals
   currentPrice: number
+  currency?: string
 }
 
 function RSIBar({ rsi }: { rsi: number }) {
@@ -31,7 +33,8 @@ function Row({ label, value, accent }: { label: string; value: string; accent?: 
   )
 }
 
-export default function TechnicalCard({ technicals: t, currentPrice }: Props) {
+export default function TechnicalCard({ technicals: t, currentPrice, currency }: Props) {
+  const sym = currencySymbol(currency)
   const macdColor = t.macd_histogram > 0 ? 'text-green-400' : 'text-red-400'
   const rsiColor = t.rsi > 70 ? 'text-red-400' : t.rsi < 30 ? 'text-green-400' : 'text-blue-400'
   const trendColor = t.ma_trend?.startsWith('Bullish') ? 'text-green-400' : 'text-red-400'
@@ -67,9 +70,9 @@ export default function TechnicalCard({ technicals: t, currentPrice }: Props) {
           />
         </div>
         <div className="flex justify-between text-xs text-gray-600 mt-1">
-          <span>${t.bollinger_lower}</span>
+          <span>{fmtMoney(t.bollinger_lower, currency)}</span>
           <span className="text-gray-500 text-xs">{t.bollinger_position}</span>
-          <span>${t.bollinger_upper}</span>
+          <span>{fmtMoney(t.bollinger_upper, currency)}</span>
         </div>
       </div>
 
@@ -86,8 +89,8 @@ export default function TechnicalCard({ technicals: t, currentPrice }: Props) {
           value={t.ma_trend?.split('—')[0]?.trim() ?? t.ma_trend}
           accent={trendColor}
         />
-        {t.sma_50 && <Row label="50-Day MA" value={`$${t.sma_50}`} />}
-        {t.sma_200 && <Row label="200-Day MA" value={`$${t.sma_200}`} />}
+        {t.sma_50  && <Row label="50-Day MA"  value={`${sym}${t.sma_50}`}  />}
+        {t.sma_200 && <Row label="200-Day MA" value={`${sym}${t.sma_200}`} />}
         {t.next_earnings && (
           <Row
             label="Next Earnings"

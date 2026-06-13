@@ -178,17 +178,17 @@ export default function Dashboard() {
             {/* Row 1: Price + AI Analysis */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               {price && price.price && <PriceCard data={price} />}
-              <AnalysisCard data={analysis} ticker={ticker} />
+              <AnalysisCard data={analysis} ticker={ticker} currency={price?.currency} />
             </div>
 
             {/* Row 2: Chart */}
-            <ChartCard ticker={ticker} />
+            <ChartCard ticker={ticker} currency={price?.currency} />
 
             {/* Row 3: Technicals + Market Context */}
             {(technicals || marketContext) && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 {technicals && price && (
-                  <TechnicalCard technicals={technicals} currentPrice={price.price} />
+                  <TechnicalCard technicals={technicals} currentPrice={price.price} currency={price.currency} />
                 )}
                 {marketContext && <MarketContextCard context={marketContext} />}
               </div>

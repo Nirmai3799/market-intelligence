@@ -1,27 +1,11 @@
 import type { PriceData } from '../types'
+import { currencySymbol, fmtMoney } from '../utils/currency'
 
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  USD: '$',   INR: '₹',  GBP: '£',  EUR: '€',
-  JPY: '¥',   CNY: '¥',  CAD: 'C$', AUD: 'A$',
-  HKD: 'HK$', SGD: 'S$', KRW: '₩',  CHF: 'Fr',
-  TWD: 'NT$', BRL: 'R$', MXN: '$',  SEK: 'kr',
-  NOK: 'kr',  DKK: 'kr', ZAR: 'R',  TRY: '₺',
-}
-
-function sym(currency: string | undefined) {
-  return CURRENCY_SYMBOLS[currency ?? 'USD'] ?? (currency ? currency + ' ' : '$')
-}
-
-function fmtPrice(value: number | undefined | null, currency: string | undefined) {
-  if (value == null) return '—'
-  // JPY, KRW and similar integer currencies don't use decimals
-  const decimals = ['JPY', 'KRW', 'IDR'].includes(currency ?? '') ? 0 : 2
-  return sym(currency) + value.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
-}
+const fmtPrice = fmtMoney
 
 function fmtCap(marketCap: number | undefined, currency: string | undefined) {
   if (!marketCap) return '—'
-  const s = sym(currency)
+  const s = currencySymbol(currency)
   if (marketCap >= 1e12) return s + (marketCap / 1e12).toFixed(2) + 'T'
   if (marketCap >= 1e9)  return s + (marketCap / 1e9).toFixed(1)  + 'B'
   if (marketCap >= 1e6)  return s + (marketCap / 1e6).toFixed(1)  + 'M'
